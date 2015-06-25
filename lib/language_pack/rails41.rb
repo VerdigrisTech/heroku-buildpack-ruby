@@ -15,8 +15,37 @@ class LanguagePack::Rails41 < LanguagePack::Rails4
     end
   end
 
+  def compile
+    instrument "rails41.compile" do
+      super
+      allow_git do
+        create_secrets_yml
+      end
+    end
+  end
+
   def create_database_yml
     instrument 'ruby.create_database_yml' do
+    end
+  end
+
+  # writes ERB based secrets.yml for Rails 4.1+.
+  def create_secrets_yml
+    instrument 'ruby.create_secrets_yml' do
+      log("create_secrets_yml") do
+        return unless File.directory?("config")
+        topic("Writing config/secrets.yml to read from SECRET_KEY_BASE")
+        File.open("config/secrets.yml", "w") do |file|
+          file.puts <<-SECRETS_YML
+<%
+raise "No RACK_ENV or RAILS_ENV found" unless ENV["RAILS_ENV"] || ENV["RACK_ENV"]
+%>
+
+<%= ENV["RAILS_ENV"] || ENV["RACK_ENV"] %>:
+  secret_key_base: <%= ENV["SECRET_KEY_BASE"] %>
+          SECRETS_YML
+        end
+      end
     end
   end
 
